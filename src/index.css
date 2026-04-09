@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#0f101a] text-slate-100 antialiased overflow-x-hidden;
+    font-family: 'Outfit', 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+  /* Cinematic Animated Background */
+  .bg-mesh {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle at 10% 20%, rgba(30, 27, 75, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(67, 56, 202, 0.2) 0%, transparent 50%);
+    z-index: -1;
+    filter: blur(80px);
+  }
+
+  /* Glassmorphism Panels */
+  .glass-panel {
+    @apply bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-2xl;
+  }
+  
+  .glass-card {
+    @apply bg-slate-800/40 backdrop-blur-md border border-white/5 hover:border-white/20 transition-all duration-300 shadow-lg;
+  }
+
+  /* Expert Digital Score - Dark Mode */
+  .expert-score-container {
+    @apply bg-[#14151f] rounded-[2rem] border border-white/5 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.6)];
+  }
+
+  .expert-score-header {
+    @apply bg-gradient-to-r from-indigo-900/80 to-slate-900/80 backdrop-blur-md px-8 py-5 border-b border-white/10;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full hover:bg-white/20; }
+
+/* Global Animations */
+@keyframes softPulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+.animate-soft { animation: softPulse 4s infinite ease-in-out; }
