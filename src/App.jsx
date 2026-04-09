@@ -321,7 +321,7 @@ export default function App() {
                     <button 
                       key={tab.id}
                       onClick={() => { setNavMode(tab.id); setSubView({type:null, value:null}); setSearch(''); }}
-                      className={`px-8 md:px-10 py-3 rounded-xl font-black text-sm transition-all uppercase tracking-[0.2em] ${navMode === tab.id ? 'bg-[#d4af37] text-black shadow-[0_10px_30px_rgba(212,175,55,0.4)]' : 'text-slate-400 hover:text-white'}`}
+                      className={`px-4 md:px-10 py-2.5 md:py-3 rounded-xl font-black text-[11px] md:text-sm transition-all uppercase tracking-[0.1em] md:tracking-[0.2em] whitespace-nowrap ${navMode === tab.id ? 'bg-[#d4af37] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
                     >
                       {tab.label}
                     </button>
@@ -330,17 +330,17 @@ export default function App() {
               </div>
 
               <div className="max-w-4xl mx-auto space-y-6">
-                <div className="flex flex-col gap-2 relative">
-                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-[2px] h-12 bg-[#d4af37] blur-[1px]" />
-                  <h1 className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-tight">
+                <div className="flex flex-col gap-1 relative">
+                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-[2px] h-8 bg-[#d4af37] blur-[1px]" />
+                  <h1 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter leading-tight">
                     PLAYLIST <br /> <span className="text-[#d4af37]">VAULT</span>
                   </h1>
                 </div>
                  <div className="relative group max-w-2xl">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6 group-focus-within:text-[#d4af37] transition-all" />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-[#d4af37] transition-all" />
                     <input 
                       type="text" placeholder="제목/가수 빠른 검색..."
-                      className="bg-white/5 border border-white/10 rounded-2xl py-6 pl-16 pr-8 text-2xl w-full outline-none focus:ring-4 focus:ring-[#d4af37]/20 focus:border-[#d4af37] transition-all font-bold placeholder:text-slate-600 text-white shadow-2xl"
+                      className="bg-white/5 border border-white/10 rounded-xl md:rounded-2xl py-4 md:py-6 pl-14 md:pl-16 pr-6 md:pr-8 text-lg md:text-2xl w-full outline-none focus:ring-4 focus:ring-[#d4af37]/20 focus:border-[#d4af37] transition-all font-bold placeholder:text-slate-600 text-white shadow-2xl"
                       value={search} 
                       onChange={(e)=>setSearch(e.target.value)}
                       onKeyDown={(e) => {
@@ -373,20 +373,20 @@ export default function App() {
                         setSubView({ type: navMode === 'all' ? 'index' : navMode === 'artists' ? 'artist' : 'genre', value: item.name });
                         setSearch('');
                       }}
-                      className="group bg-white/5 p-6 md:p-8 rounded-3xl border border-white/10 hover:bg-white/10 hover:border-[#d4af37] transition-all cursor-pointer relative overflow-hidden shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6"
+                      className="group bg-white/5 p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/10 hover:bg-white/10 hover:border-[#d4af37] transition-all cursor-pointer relative overflow-hidden shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6"
                     >
-                      <div className="flex items-center gap-8">
-                        <div className="w-1.5 h-16 bg-[#d4af37] shadow-[0_0_15px_rgba(212,175,55,0.4)] rounded-full" />
-                        <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-4 md:gap-8">
+                        <div className="w-1 h-12 md:w-1.5 md:h-16 bg-[#d4af37] shadow-[0_0_15px_rgba(212,175,55,0.4)] rounded-full" />
+                        <div className="flex items-center gap-4 md:gap-6">
                            {navMode === 'all' ? (
-                             <span className="text-5xl font-black font-serif italic text-[#d4af37] drop-shadow-sm w-16 text-center">{item.name}</span>
+                             <span className="text-3xl md:text-5xl font-black font-serif italic text-[#d4af37] drop-shadow-sm w-10 md:w-16 text-center">{item.name}</span>
                            ) : (
-                             <div className="bg-[#d4af37]/20 p-4 rounded-2xl border border-[#d4af37]/30 group-hover:bg-[#d4af37] group-hover:text-black transition-all">
-                               <Folder size={32} />
+                             <div className="bg-[#d4af37]/20 p-3 md:p-4 rounded-xl md:rounded-2xl border border-[#d4af37]/30 group-hover:bg-[#d4af37] group-hover:text-black transition-all">
+                               <Folder size={24} className="md:w-8 md:h-8" />
                              </div>
                            )}
                            <div className="flex flex-col">
-                             <span className="text-xl font-black text-white group-hover:text-[#d4af37] transition-colors">{item.name}</span>
+                             <span className="text-lg md:text-xl font-black text-white group-hover:text-[#d4af37] transition-colors">{item.name}</span>
                              <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">{item.count} TITLES IN VAULT</span>
                            </div>
                         </div>
