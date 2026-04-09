@@ -61,6 +61,9 @@ export default function App() {
   const [scoreOffset, setScoreOffset] = useState({ x: 0, y: 0 });
   const [isPanningScore, setIsPanningScore] = useState(false);
   const scoreDragStart = useRef({ x: 0, y: 0 });
+  const pinchStartDist = useRef(null);
+  const pinchStartScale = useRef(1);
+  
   const [videoTitle, setVideoTitle] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [debugLog, setDebugLog] = useState('');
@@ -99,6 +102,13 @@ export default function App() {
     setOverlayPos({ x: 0, y: 0 });
     setScoreScale(1);
     setScoreOffset({ x: 0, y: 0 });
+    
+    // Auto-scale overlay for mobile
+    if (window.innerWidth < 768) {
+      setOverlayScale(0.6);
+    } else {
+      setOverlayScale(0.85);
+    }
   }, [selectedSong]);
 
   useEffect(() => {
@@ -113,51 +123,83 @@ export default function App() {
     return () => window.removeEventListener('wheel', handleGlobalWheel);
   }, [selectedSong]);
 
-  const handleMouseDown = (e) => {
-    if (e.target.closest('.no-drag')) return;
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX - overlayPos.x, y: e.clientY - overlayPos.y };
-  };
+  const handleStart = (e, type) => {
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
 
-  const handleScoreMouseDown = (e) => {
-    if (scoreScale <= 1) return;
-    setIsPanningScore(true);
-    scoreDragStart.current = { x: e.clientX - scoreOffset.x, y: e.clientY - scoreOffset.y };
+    if (type === 'overlay') {
+      if (e.target.closest('.no-drag')) return;
+      setIsDragging(true);
+      dragStart.current = { x: clientX - overlayPos.x, y: clientY - overlayPos.y };
+    } else if (type === 'score') {
+      if (isTouch && e.touches.length === 2) {
+        // Pinch start
+        const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        pinchStartDist.current = dist;
+        pinchStartScale.current = scoreScale;
+      } else {
+        if (scoreScale <= 1) return;
+        setIsPanningScore(true);
+        scoreDragStart.current = { x: clientX - scoreOffset.x, y: clientY - scoreOffset.y };
+      }
+    }
   };
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMove = (e) => {
+      const isTouch = e.type === 'touchmove';
+      const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+      const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
       if (isDragging) {
-        setOverlayPos({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
+        setOverlayPos({ x: clientX - dragStart.current.x, y: clientY - dragStart.current.y });
       }
       if (isResizingOverlay) {
-        const delta = e.clientX - resizeStart.current.x;
+        const delta = clientX - resizeStart.current.x;
         setOverlayScale(Math.max(0.4, Math.min(2, resizeStart.current.scale + delta / 200)));
       }
       if (isPanningScore) {
-        setScoreOffset({ x: e.clientX - scoreDragStart.current.x, y: e.clientY - scoreDragStart.current.y });
+        if (isTouch && e.touches.length === 2) {
+          // Pinch move
+          const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+          if (pinchStartDist.current) {
+            const ratio = dist / pinchStartDist.current;
+            setScoreScale(Math.max(0.5, Math.min(5, pinchStartScale.current * ratio)));
+          }
+        } else {
+          setScoreOffset({ x: clientX - scoreDragStart.current.x, y: clientY - scoreDragStart.current.y });
+        }
       }
     };
-    const handleMouseUp = () => {
+    const handleEnd = () => {
       setIsDragging(false);
       setIsResizingOverlay(false);
       setIsPanningScore(false);
+      pinchStartDist.current = null;
     };
 
     if (isDragging || isResizingOverlay || isPanningScore) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleEnd);
+      window.addEventListener('touchmove', handleMove, { passive: false });
+      window.addEventListener('touchend', handleEnd);
     }
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
     };
-  }, [isDragging, isResizingOverlay, isPanningScore, overlayPos, scoreOffset]);
+  }, [isDragging, isResizingOverlay, isPanningScore, overlayPos, scoreOffset, scoreScale]);
 
-  const handleResizeOverlayMouseDown = (e) => {
+  const handleResizeOverlayStart = (e) => {
     e.stopPropagation();
     setIsResizingOverlay(true);
-    resizeStart.current = { x: e.clientX, y: e.clientY, scale: overlayScale };
+    const isTouch = e.type === 'touchstart';
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+    resizeStart.current = { x: clientX, y: clientY, scale: overlayScale };
   };
 
   const openYouTube = useCallback(() => {
@@ -225,17 +267,18 @@ export default function App() {
     if (!selectedSong) return null;
     return (
       <div 
-        onMouseDown={handleScoreMouseDown}
-        className={`h-full w-full flex items-center justify-center bg-black overflow-hidden ${scoreScale > 1 ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        onMouseDown={(e) => handleStart(e, 'score')}
+        onTouchStart={(e) => handleStart(e, 'score')}
+        className={`h-full w-full flex items-center justify-center bg-black overflow-hidden ${scoreScale > 1 ? 'cursor-grab active:cursor-grabbing' : 'touch-pan-y'}`}
       >
           <img 
             src={`/songs/${selectedSong.file}`} 
             alt={selectedSong.title} 
             style={{ 
               transform: `translate(${scoreOffset.x}px, ${scoreOffset.y}px) scale(${scoreScale})`,
-              transition: isPanningScore ? 'none' : 'transform 0.2s ease-out'
+              transition: (isPanningScore || pinchStartDist.current) ? 'none' : 'transform 0.2s ease-out'
             }}
-            className="max-h-full max-w-full object-contain pointer-events-none"
+            className="max-h-full max-w-full object-contain pointer-events-none touch-none"
           />
       </div>
     );
@@ -409,23 +452,24 @@ export default function App() {
             
             {/* UNIFIED COMMAND DECK: CHORDS + YOUTUBE */}
             <div 
-              onMouseDown={handleMouseDown}
+              onMouseDown={(e) => handleStart(e, 'overlay')}
+              onTouchStart={(e) => handleStart(e, 'overlay')}
               style={{ 
                 transform: `translate(${overlayPos.x}px, ${overlayPos.y}px) scale(${overlayScale})`,
                 transition: isDragging ? 'none' : 'transform 0.2s ease-out'
               }}
-              className={`absolute bottom-10 right-10 bg-black/85 backdrop-blur-3xl px-8 py-4 rounded-[2.5rem] border border-[#d4af37]/30 z-[120] shadow-[0_40px_100px_rgba(0,0,0,1)] select-none cursor-move flex items-stretch gap-5 ${isDragging ? 'opacity-80' : 'opacity-100'}`}
+              className={`absolute bottom-6 right-6 md:bottom-10 md:right-10 bg-black/85 backdrop-blur-3xl px-6 md:px-8 py-3 md:py-4 rounded-[2rem] md:rounded-[2.5rem] border border-[#d4af37]/30 z-[120] shadow-[0_40px_100px_rgba(0,0,0,1)] select-none cursor-move flex items-stretch gap-3 md:gap-5 ${isDragging ? 'opacity-80' : 'opacity-100'} touch-none`}
             >
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 md:gap-3">
                 <div className="flex items-center justify-between px-2">
-                  <div className="text-[7px] font-black text-white/30 tracking-[0.5em] uppercase">COMMAND DECK</div>
+                  <div className="text-[6px] md:text-[7px] font-black text-white/30 tracking-[0.5em] uppercase">COMMAND DECK</div>
                 </div>
                 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5 md:gap-2">
                   {/* SOURCE ROW */}
                   <div 
                     onClick={() => setSourceTranspose(s => (s + 1 > 12 ? -11 : s + 1))}
-                    className="no-drag flex gap-6 items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl p-4 transition-all cursor-pointer group/row border border-white/5"
+                    className="no-drag flex gap-3 md:gap-6 items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl md:rounded-2xl p-2.5 md:p-4 transition-all cursor-pointer group/row border border-white/5"
                   >
                     {[
                       { chord: 'C', group: 'maj' },
@@ -435,13 +479,13 @@ export default function App() {
                       { chord: 'Dm', group: 'min' },
                       { chord: 'Em', group: 'min' }
                     ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-6">
-                        <div className="min-w-[55px] text-center">
-                          <div className="text-3xl font-black text-white/90 drop-shadow-lg tracking-tighter">
+                      <div key={idx} className="flex items-center gap-3 md:gap-6">
+                        <div className="min-w-[40px] md:min-w-[55px] text-center">
+                          <div className="text-xl md:text-3xl font-black text-white/90 drop-shadow-lg tracking-tighter">
                             {transposeChord(item.chord, sourceTranspose)}
                           </div>
                         </div>
-                        {idx === 2 && <div className="w-[1px] h-6 bg-white/10" />}
+                        {idx === 2 && <div className="w-[1px] h-4 md:h-6 bg-white/10" />}
                       </div>
                     ))}
                   </div>
@@ -449,7 +493,7 @@ export default function App() {
                   {/* TARGET ROW */}
                   <div 
                     onClick={() => setTranspose(t => (t + 1 > 12 ? -11 : t + 1))}
-                    className="no-drag flex gap-6 items-center justify-center bg-[#d4af37]/5 hover:bg-[#d4af37]/10 rounded-2xl p-4 transition-all cursor-pointer group/row border border-[#d4af37]/10"
+                    className="no-drag flex gap-3 md:gap-6 items-center justify-center bg-[#d4af37]/5 hover:bg-[#d4af37]/10 rounded-xl md:rounded-2xl p-2.5 md:p-4 transition-all cursor-pointer group/row border border-[#d4af37]/10"
                   >
                     {[
                       { chord: 'C', group: 'maj' },
@@ -459,13 +503,13 @@ export default function App() {
                       { chord: 'Dm', group: 'min' },
                       { chord: 'Em', group: 'min' }
                     ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-6">
-                        <div className="min-w-[55px] text-center">
-                          <div className={`text-3xl font-black ${item.group === 'maj' ? 'text-[#d4af37]' : 'text-[#f1c40f]'} drop-shadow-xl tracking-tighter`}>
+                      <div key={idx} className="flex items-center gap-3 md:gap-6">
+                        <div className="min-w-[40px] md:min-w-[55px] text-center">
+                          <div className={`text-xl md:text-3xl font-black ${item.group === 'maj' ? 'text-[#d4af37]' : 'text-[#f1c40f]'} drop-shadow-xl tracking-tighter`}>
                             {transposeChord(item.chord, sourceTranspose + transpose)}
                           </div>
                         </div>
-                        {idx === 2 && <div className="w-[1px] h-6 bg-white/10" />}
+                        {idx === 2 && <div className="w-[1px] h-4 md:h-6 bg-white/10" />}
                       </div>
                     ))}
                   </div>
@@ -473,19 +517,20 @@ export default function App() {
               </div>
 
               {/* INTEGRATED VERTICAL YT TRIGGER */}
-              <div className="flex items-center px-1">
+              <div className="flex items-center px-0.5 md:px-1">
                  <button 
                   onClick={openYouTube}
-                  className="no-drag flex flex-col items-center justify-center gap-1 w-14 h-full min-h-[140px] rounded-3xl bg-gradient-to-b from-[#ff0000] to-[#b30000] text-white shadow-2xl hover:brightness-110 active:scale-95 transition-all group/yt"
+                  className="no-drag flex flex-col items-center justify-center gap-1 w-10 md:w-14 h-full min-h-[100px] md:min-h-[140px] rounded-2xl md:rounded-3xl bg-gradient-to-b from-[#ff0000] to-[#b30000] text-white shadow-2xl hover:brightness-110 active:scale-95 transition-all group/yt"
                  >
-                   <Video size={24} className="group-hover/yt:animate-pulse" />
-                   <span className="text-[10px] font-black uppercase tracking-tighter">YT</span>
+                   <Video size={18} className="md:w-6 md:h-6 group-hover/yt:animate-pulse" />
+                   <span className="text-[8px] md:text-[10px] font-black uppercase tracking-tighter">YT</span>
                  </button>
               </div>
 
               {/* Resize Handle */}
               <div 
-                onMouseDown={handleResizeOverlayMouseDown}
+                onMouseDown={handleResizeOverlayStart}
+                onTouchStart={handleResizeOverlayStart}
                 className="absolute -bottom-1 -right-1 w-10 h-10 cursor-nwse-resize flex items-end justify-end p-2 no-drag group/res"
               >
                 <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-white/20 rounded-br-[4px] group-hover/res:border-[#d4af37] transition-colors" />
